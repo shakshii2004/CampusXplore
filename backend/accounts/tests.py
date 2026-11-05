@@ -814,3 +814,28 @@ class StudentListAPITests(APITestCase):
                 self.assertEqual(s['report_count'], 1)
             elif s['email'] == 'diya.patel@lpu.in':
                 self.assertEqual(s['report_count'], 0)
+
+
+class SeedStaffUsersCommandTests(TestCase):
+    def test_seed_staff_users_idempotency(self):
+        from django.core.management import call_command
+        # First execution: creates accounts
+        call_command('seed_staff_users')
+
+        admin = User.objects.get(email='admin@lpu.in')
+        self.assertEqual(admin.role, Role.ADMIN)
+        self.assertTrue(admin.is_staff)
+        self.assertTrue(admin.is_superuser)
+        self.assertTrue(admin.check_password('AdminPassword123!'))
+
+        faculty = User.objects.get(email='faculty@lpu.in')
+        self.assertEqual(faculty.role, Role.FACULTY)
+        self.assertFalse(faculty.is_staff)
+        self.assertFalse(faculty.is_superuser)
+        self.assertTrue(faculty.check_password('FacultyPassword123!'))
+
+        # Second execution: idempotency check (no duplicates or errors)
+        call_command('seed_staff_users')
+        self.assertEqual(User.objects.filter(email='admin@lpu.in').count(), 1)
+        self.assertEqual(User.objects.filter(email='faculty@lpu.in').count(), 1)
+
